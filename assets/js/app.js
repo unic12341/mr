@@ -3,6 +3,7 @@ const PIXI = window.PIXI;
 
 const canvas = document.querySelector("canvas");
 const ctx = canvas.getContext("2d");
+
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
@@ -23,61 +24,30 @@ const fps = 50;
 const nextframe = 1000 / fps;
 let timer = 0;
 
-function animate(timeStamp) {
-    const deltaTime = timeStamp - lastTime;
-    lastTime = timeStamp;
-    if (timer > nextframe) {
-        ctx.fillStyle = "rgba(0,0, 0, 0.05)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = defaultColor;
-        effect.symbols.forEach((symbol) => {
-            symbol.draw(ctx);
-            symbol.update();
-        });
-        timer = 0;
-    } else {
-        timer += deltaTime;
-    }
-    requestAnimationFrame(animate);
-}
-animate(0);
+const circleSize = 10;  // Dimensione del canvas di PixiJS
 
-// Inizializzazione di PixiJS
 const pixiApp = new PIXI.Application({
-    width: window.innerWidth,
-    height: window.innerHeight,
-    transparent: true,
+    width: circleSize,
+    height: circleSize,
+    transparent: true
 });
+
+pixiApp.view.id = 'pixi-canvas';
 document.body.appendChild(pixiApp.view);
 
 const circle = new PIXI.Graphics();
 circle.beginFill(0xFFFFFF);
-circle.drawCircle(0, 0, 5);
+circle.drawCircle(circleSize / 2, circleSize / 2, 5);  // Centra il cerchio nel canvas di PixiJS
 circle.endFill();
 pixiApp.stage.addChild(circle);
 
-// Effetto scia
-const trail = new PIXI.ParticleContainer(100, {
-    scale: true,
-    position: true,
-    rotation: false,
-    uvs: false,
-    alpha: true,
-});
-pixiApp.stage.addChild(trail);
+let targetX = Math.random() * window.innerWidth;
+let targetY = Math.random() * window.innerHeight;
+const speed = 2;  // Velocità di movimento del cerchio
 
-const particles = [];
-
-for (let i = 0; i < 100; i++) {
-    const particle = PIXI.Sprite.from(PIXI.Texture.WHITE);
-    particle.anchor.set(0.5);
-    particle.scale.set(0.5);
-    particle.alpha = 0;
-    trail.addChild(particle);
-    particles.push(particle);
+function lerp(start, end, t) {
+    return start * (1 - t) + end * t;
 }
-
-let currentIndex = 0;
 
 function isCollidingWithCharacter(x, y) {
     for (let symbol of effect.symbols) {
@@ -93,38 +63,48 @@ function isCollidingWithCharacter(x, y) {
     return false;
 }
 
-// Funzione per spostare il cerchio in modo casuale
-function moveCircleRandomly() {
-    const randomX = Math.random() * window.innerWidth;
-    const randomY = Math.random() * window.innerHeight;
-    circle.x = randomX;
-    circle.y = randomY;
-
-    // Aggiorna la scia
-    const particle = particles[currentIndex];
-    particle.alpha = 1;
-    particle.x = randomX;
-    particle.y = randomY;
-    currentIndex++;
-    if (currentIndex >= particles.length) {
-        currentIndex = 0;
-    }
-
-    // Controlla le collisioni con i caratteri
-    if (isCollidingWithCharacter(randomX, randomY)) {
-        defaultColor = gradientColor;
-        setTimeout(() => {
-            defaultColor = singleColor;
-        }, 1000);
-    }
+function setNewTargetPosition() {
+    targetX = Math.random() * window.innerWidth;
+    targetY = Math.random() * window.innerHeight;
 }
 
-// Chiamare la funzione ogni secondo
-setInterval(moveCircleRandomly, 1000);
+setInterval(setNewTargetPosition, 1000);
 
-pixiApp.ticker.add(() => {
-    for (let i = 0; i < particles.length; i++) {
-        const particle = particles[i];
-        particle.alpha *= 0.95;
+function animate(timeStamp) {
+    const deltaTime = timeStamp - lastTime;
+    lastTime = timeStamp;
+    if (timer > nextframe) {
+        ctx.fillStyle = "rgba(0,0, 0, 0.05)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = defaultColor;
+        effect.symbols.forEach((symbol) => {
+            symbol.draw(ctx);
+            symbol.update();
+        });
+        timer = 0;
+    } else {
+        timer += deltaTime;
     }
-});
+
+    const dx = targetX - parseFloat(pixiApp.view.style.left || 0);
+    const dy = targetY - parseFloat(pixiApp.view.style.top || 0);
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > 1) {
+        const moveX = lerp(parseFloat(pixiApp.view.style.left || 0), targetX, speed / distance);
+        const moveY = lerp(parseFloat(pixiApp.view.style.top || 0), targetY, speed / distance);
+        pixiApp.view.style.left = `${moveX}px`;
+        pixiApp.view.style.top = `${moveY}px`;
+
+        // Check collisions with characters
+        if (isCollidingWithCharacter(moveX, moveY)) {
+            defaultColor = gradientColor;
+            setTimeout(() => {
+                defaultColor = singleColor;
+            }, 1000);
+        }
+    }
+
+    requestAnimationFrame(animate);
+}
+animate(0);
