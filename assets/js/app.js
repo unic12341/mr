@@ -69,7 +69,7 @@ pixiApp.stage.addChild(trail);
 const particles = [];
 
 for (let i = 0; i < 100; i++) {
-    const particle = new PIXI.Sprite.from(PIXI.Texture.WHITE);
+    const particle = PIXI.Sprite.from(PIXI.Texture.WHITE);
     particle.anchor.set(0.5);
     particle.scale.set(0.5);
     particle.alpha = 0;
